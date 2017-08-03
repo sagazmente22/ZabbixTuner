@@ -5,12 +5,13 @@ __author__    = "Janssen dos Reis Lima"
 from zabbix_api import ZabbixAPI
 import os, sys 
 #from os import *
-import datetime
 import time
+import datetime
 import csv
 from termcolor import colored
 from progressbar import ProgressBar, Percentage, ReverseBar, ETA, Timer, RotatingMarker
 from conf.zabbix import *
+import json
 
 def banner():
     print colored('''
@@ -53,13 +54,14 @@ def menu():
     print "[5] - Iniciar diagnóstico"
     print "[6] - Relatório de Agentes Zabbix desatualizados"
     print "[7] - Relatório de Triggers por tempo de alarme e estado"
+    print "[8] - Relatório de It Services por tempo periodo"
     print ""
     print "[0] - Sair"
     print ""
     menu_opcao()
 
 def menu_opcao():
-    opcao = raw_input( "[+] - Selecione uma opção[0-7]: ")
+    opcao = raw_input( "[+] - Selecione uma opção[0-8]: ")
     if opcao == '1':
         dadosItens()
     elif opcao == '2':
@@ -72,6 +74,8 @@ def menu_opcao():
         agentesDesatualizados()
     elif opcao == '7':
         menu_relack()
+    elif opcao == '8':
+        menu_relits()
     elif opcao == '0':
         sys.exit()
     else:
@@ -480,6 +484,110 @@ def menu_opcao_relack():
         raw_input("\nPressione ENTER para voltar")
         menu_relack()
 
+def status_num2string(statusid):
+
+    if statusid == '1':
+        return 'Information'
+    elif statusid == '2':
+        return 'Warning'
+    elif statusid == '3':
+        return 'Average'
+    elif statusid == '4':
+        return 'High'
+    elif statusid == '5':
+        return 'Disaster'
+    else:
+        return 'Not classified'
+
+def print_relatorio(it,itsla):
+    print ""
+    print colored("[-PROBLEM-]",'red'), "IT Service: ", it["serviceid"]
+    print "=" * 80
+    print ""
+    print colored("[INFO]",'blue'), "Nome : ", it["name"]
+    print colored("[INFO]",'blue'), "Status: ", status_num2string(it["status"])
+    print colored("[INFO]",'blue'), "Problem Time: ", itsla[it["serviceid"]]["sla"][0]["problemTime"]
+    print colored("[INFO]",'blue'), "SLA / Acceptable SLA: ", str(itsla[it["serviceid"]]["sla"][0]["sla"])+"/"+it["goodsla"]
+    print ""
+
+def menu_relits():
+    os.system('clear')
+    banner()
+    print colored("[+] - Bem-vindo ao ZABBIX TUNER - [+]\n" 
+    "[+] - Zabbix Tuner faz um diagnóstico do seu ambiente e propõe melhorias na busca de um melhor desempenho - [+]\n"
+    "[+] - Desenvolvido por Janssen Lima - [+]\n"
+    "[+] - Dúvidas/Sugestões envie e-mail para janssen@conectsys.com.br - [+]", 'blue')
+    print ""
+
+    try:
+        serviceids = int(raw_input( "[+] - Informe o Service ID a ser listado : \n"))
+    except Exception as e:
+        print "Formato de ID inválido, insira um valor inteiro"
+        raw_input("\nPressione ENTER para voltar")
+        menu_relits()
+
+    try:
+        dt_init = raw_input( "[+] - Informe a data inicio do periodo do relatorio ? (D/M/A)\n")
+        dt_end = raw_input( "[+] - Informe a data fim do periodo do relatorio ? (D/M/A)\n")
+        #datetime.datetime.strptime(dt_init, '%d/%m/%Y')
+        #datetime.datetime.strptime(dt_end, '%d/%m/%Y')
+    except ValueError:
+        print "Formato de data inválido, insira um formato válido"
+        raw_input("\nPressione ENTER para voltar")
+        menu_relits()
+
+    #dt_init = time.mktime(datetime.datetime.strptime(dt_init, "%d/%m/%Y").timetuple())
+    #dt_end = time.mktime(datetime.datetime.strptime(dt_end, "%d/%m/%Y").timetuple())
+
+    sid = {"output" : "extend", "serviceids" : serviceids}
+    get1 = zapi.service.get(sid)
+    
+    parent = {"output" : "extend", "parentids" : serviceids }
+    childs = zapi.service.get(parent)
+
+    ids = []
+    temp = []
+
+    for child in childs:
+        ids.append(child["serviceid"])
+        temp.append(child)
+
+    ids.append(get1[0]["serviceid"])
+    temp.append(get1[0])
+
+    itservice = { 'serviceids' : ids ,  "intervals" : [ {"from" : dt_init, "to": dt_end}]}
+    get2 = zapi.service.getsla(itservice)
+    
+    for it in get1:
+        print ""
+        print_relatorio(it,get2)
+
+    for it in childs:
+        print ""
+        print_relatorio(it,get2)
+
+    opcao = raw_input("\nDeseja gerar relatorio em arquivo? [s/n]")
+    if opcao == 's' or opcao == 'S':
+        with open("relatorio.csv" ,"w") as csv:
+            csv.write("IT Service:,Nome:,Status:,Problem Time:,SLA / Acceptable SLA:\r\n ")
+
+            for it in temp:
+                csv.write(it['serviceid'])
+                csv.write(",")
+                csv.write(it['name'])
+                csv.write(",")
+                csv.write(status_num2string(get2[it['serviceid']]["status"]))
+                csv.write(",")
+                csv.write(str(get2[it['serviceid']]["sla"][0]['problemTime']))
+                csv.write(",")
+                csv.write(str(get2[it['serviceid']]["sla"][0]["sla"])+"/"+it["goodsla"])
+                csv.write("\r\n")
+        
+        raw_input("\nArquivo gerado com sucesso ! Pressione ENTER para voltar")
+        menu()
+    else:   
+        raw_input("\nPressione ENTER para voltar")
+        menu()
 def main():
     menu()
 
