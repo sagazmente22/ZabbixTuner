@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-server="http://api.zabbix.staging.globoi.com/"
+server="http://api.zabbix.qa01.globoi.com"
 username="ithalo.freire"
-password="Tatalo22cake69$"
+password="Sagaz22samurai$"
 loglevel=0
 timeout=None

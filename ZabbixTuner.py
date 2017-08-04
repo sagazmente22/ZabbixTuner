@@ -529,42 +529,65 @@ def menu_relits():
     try:
         dt_init = raw_input( "[+] - Informe a data inicio do periodo do relatorio ? (D/M/A)\n")
         dt_end = raw_input( "[+] - Informe a data fim do periodo do relatorio ? (D/M/A)\n")
-        #datetime.datetime.strptime(dt_init, '%d/%m/%Y')
-        #datetime.datetime.strptime(dt_end, '%d/%m/%Y')
+        datetime.datetime.strptime(dt_init, '%d/%m/%Y')
+        datetime.datetime.strptime(dt_end, '%d/%m/%Y')
     except ValueError:
         print "Formato de data inválido, insira um formato válido"
         raw_input("\nPressione ENTER para voltar")
         menu_relits()
 
-    #dt_init = time.mktime(datetime.datetime.strptime(dt_init, "%d/%m/%Y").timetuple())
-    #dt_end = time.mktime(datetime.datetime.strptime(dt_end, "%d/%m/%Y").timetuple())
+    dt_init = time.mktime(datetime.datetime.strptime(dt_init, "%d/%m/%Y").timetuple())
+    dt_end = time.mktime(datetime.datetime.strptime(dt_end, "%d/%m/%Y").timetuple())
 
     sid = {"output" : "extend", "serviceids" : serviceids}
     get1 = zapi.service.get(sid)
     
-    parent = {"output" : "extend", "parentids" : serviceids }
+    parent = {"output" : "extend", "parentids" : serviceids}
     childs = zapi.service.get(parent)
+
+    netos = list()
+
 
     ids = []
     temp = []
 
+    ids.append(get1[0]["serviceid"])
+    temp.append(get1[0])
+
     for child in childs:
+        # print grandchild['serviceid']
+
+        # Adding child's serviceid to list of ids
         ids.append(child["serviceid"])
         temp.append(child)
 
-    ids.append(get1[0]["serviceid"])
-    temp.append(get1[0])
+        leaf = {"output" : "extend", "parentids" : child['serviceid']}
+        fdf = zapi.service.get(leaf)
+        for gc in fdf:
+            ids.append(gc["serviceid"])
+            temp.append(gc)
+        netos.append(fdf)
 
     itservice = { 'serviceids' : ids ,  "intervals" : [ {"from" : dt_init, "to": dt_end}]}
     get2 = zapi.service.getsla(itservice)
     
     for it in get1:
         print ""
+        #print colored(it,'blue')
         print_relatorio(it,get2)
 
     for it in childs:
         print ""
+        #print it
         print_relatorio(it,get2)
+
+    for it in netos:
+        for gc in it:
+            print ""
+            #print gc
+            print_relatorio(gc,get2)
+
+
 
     opcao = raw_input("\nDeseja gerar relatorio em arquivo? [s/n]")
     if opcao == 's' or opcao == 'S':
