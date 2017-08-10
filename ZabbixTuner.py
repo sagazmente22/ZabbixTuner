@@ -12,6 +12,7 @@ from termcolor import colored
 from progressbar import ProgressBar, Percentage, ReverseBar, ETA, Timer, RotatingMarker
 from conf.zabbix import *
 import json
+from datetime import timedelta, date
 
 def banner():
     print colored('''
@@ -511,6 +512,9 @@ def print_relatorio(it,itsla):
     print ""
 
 def menu_relits():
+    dt_init = 0
+    dt_end = 0
+
     os.system('clear')
     banner()
     print colored("[+] - Bem-vindo ao ZABBIX TUNER - [+]\n" 
@@ -527,11 +531,62 @@ def menu_relits():
         menu_relits()
 
     try:
-        dt_init = raw_input( "[+] - Informe a data inicio do periodo do relatorio ? (D/M/A)\n")
-        dt_end = raw_input( "[+] - Informe a data fim do periodo do relatorio ? (D/M/A)\n")
-        datetime.datetime.strptime(dt_init, '%d/%m/%Y')
-        datetime.datetime.strptime(dt_end, '%d/%m/%Y')
+        print ""
+        print colored("--- Escolha uma opção para as datas do relatório ---",'yellow', attrs=['bold'])
+        print ""
+        print "[1] - Relatório de disponibilidade dos ultimos 30 dias"
+        print "[2] - Relatório de disponibilidade dos 'Q' anterior"
+        print "[3] - Digitar data para Relatório de disponibilidade"
+        print ""
+        print "[0] - Sair"
+        print ""
+
+        op_filter = raw_input( "[+] - Escolha uma opção para as datas do relatório \n")
+
+        if op_filter == '1':
+            hoje = date.today()
+            intervalo = timedelta(30)
+            passado = hoje - intervalo
+            dt_init = time.strftime("%d/%m/%Y")
+            dt_end = passado.strftime("%d/%m/%Y")
+            datetime.datetime.strptime(dt_init, '%d/%m/%Y')
+            datetime.datetime.strptime(dt_end, '%d/%m/%Y')
+        elif op_filter == '2':
+            Q1 = {'inicio'  : "28/11/2017", 'fim' : "24/02/2017"}
+            Q2 = {'inicio'  : "27/02/2017", 'fim' : "26/05/2017"}
+            Q3 = {'inicio'  : "29/05/2017", 'fim' : "25/08/2017"}
+            Q4 = {'inicio'  : "28/08/2017", 'fim' : "24/11/2017"}
+            
+            if time.strftime("%d/%m/%Y") < Q1['fim']:
+                dt_init = Q1['inicio']
+                dt_end = Q1['fim']
+            elif time.strftime("%d/%m/%Y") < Q2['fim']:
+                dt_init = Q2['inicio']
+                dt_end = Q2['fim']
+            elif time.strftime("%d/%m/%Y") < Q3['fim']:
+                dt_init = Q3['inicio']
+                dt_end = Q3['fim']
+            elif time.strftime("%d/%m/%Y") < Q4['fim']:
+                dt_init = Q4['inicio']
+                dt_end = Q4['fim']
+                
+            datetime.datetime.strptime(dt_init, '%d/%m/%Y')
+            datetime.datetime.strptime(dt_end, '%d/%m/%Y')            
+        elif op_filter == '3':
+            dt_init = raw_input( "[+] - Informe a data inicio do periodo do relatorio ? (D/M/A)\n")
+            dt_end = raw_input( "[+] - Informe a data fim do periodo do relatorio ? (D/M/A)\n")
+            datetime.datetime.strptime(dt_init, '%d/%m/%Y')
+            datetime.datetime.strptime(dt_end, '%d/%m/%Y')
+        elif op_filter == '0':
+            main()
+        else:
+            print ""
+            print "Insira um valor entre as opções acima!"
+            raw_input("\nPressione ENTER para voltar")
+            menu_relits()
+
     except ValueError:
+        print ""
         print "Formato de data inválido, insira um formato válido"
         raw_input("\nPressione ENTER para voltar")
         menu_relits()
@@ -546,7 +601,6 @@ def menu_relits():
     childs = zapi.service.get(parent)
 
     netos = list()
-
 
     ids = []
     temp = []
